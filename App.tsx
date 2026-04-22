@@ -631,11 +631,11 @@ function RegistrationScreen({ navigation, context }: RegistrationProps) {
       context.setDriverId(resolvedDriverId);
       if (isLoginMode) {
         // Always land on the operational dashboard first (online toggle, map shortcuts, airport queue).
-        navigation.navigate('PendingApproval');
+        navigation.replace('PendingApproval');
         return;
       }
 
-      navigation.navigate('DocumentUpload');
+      navigation.replace('DocumentUpload');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : `Unable to ${isLoginMode ? 'sign in' : 'register driver'}.`;
       Alert.alert('Error', message);
@@ -691,6 +691,12 @@ function DocumentUploadScreen({ navigation, context }: DocumentUploadProps) {
   const [taxAddress, setTaxAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [inspectionLoading, setInspectionLoading] = useState(false);
+
+  useEffect(() => {
+    if (!context.driverId) {
+      navigation.replace('Registration');
+    }
+  }, [context.driverId, navigation]);
 
   const pickDocument = useCallback(async () => {
     const [picked] = await pick({ type: [types.allFiles] });
@@ -869,7 +875,7 @@ function DocumentUploadScreen({ navigation, context }: DocumentUploadProps) {
       </View>
 
       <View style={styles.spacer} />
-      <Button title="Next: Vehicle Info" onPress={() => navigation.navigate('VehicleInfo')} />
+      <Button title="Next: Vehicle Info" onPress={() => navigation.replace('VehicleInfo')} />
     </ScrollView>
   );
 }
@@ -887,6 +893,12 @@ function VehicleInfoScreen({ navigation, context }: VehicleInfoProps) {
   const [powertrain, setPowertrain] = useState('gasoline');
   const [rideCategory, setRideCategory] = useState('rydine_regular');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!context.driverId) {
+      navigation.replace('Registration');
+    }
+  }, [context.driverId, navigation]);
 
   const saveVehicle = useCallback(async () => {
     if (!context.driverId) {
@@ -933,7 +945,7 @@ function VehicleInfoScreen({ navigation, context }: VehicleInfoProps) {
         throw new Error(payload.message || 'Vehicle info save failed.');
       }
 
-      navigation.navigate('PendingApproval');
+      navigation.replace('PendingApproval');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unable to save vehicle info.';
       Alert.alert('Error', message);
@@ -1018,6 +1030,14 @@ function PendingApprovalScreen({ navigation, context }: PendingApprovalProps) {
   const [destinationUsage, setDestinationUsage] = useState<DestinationKeyUsage[]>([]);
   const [roadClosureNote, setRoadClosureNote] = useState('');
   const [roadClosureLoading, setRoadClosureLoading] = useState(false);
+  const [showIncomingPrompt, setShowIncomingPrompt] = useState(false);
+  const [incomingPromptCountdown, setIncomingPromptCountdown] = useState(20);
+
+  useEffect(() => {
+    if (!context.driverId) {
+      navigation.replace('Registration');
+    }
+  }, [context.driverId, navigation]);
 
   const socketRef = useRef<Socket | null>(null);
   const watchIdRef = useRef<number | null>(null);
@@ -1029,6 +1049,8 @@ function PendingApprovalScreen({ navigation, context }: PendingApprovalProps) {
   const drivingSessionStartedAtRef = useRef<number | null>(null);
   const shiftLimitAlertedRef = useRef(false);
   const lastQueueActionAtRef = useRef(0);
+  const incomingPromptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const incomingPromptCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const gpsQuality = useMemo(() => deriveGpsQuality(lastAccuracyMeters), [lastAccuracyMeters]);
   const proTierChipStyle = useMemo(() => getProTierChipStyle(proStatus?.currentTier?.code), [proStatus?.currentTier?.code]);
@@ -1926,6 +1948,45 @@ function PendingApprovalScreen({ navigation, context }: PendingApprovalProps) {
     [endBreakMode, isOnBreak, startTracking, stopTracking]
   );
 
+  const clearIncomingPromptTimers = useCallback(() => {
+    if (incomingPromptTimerRef.current) {
+      clearTimeout(incomingPromptTimerRef.current);
+      incomingPromptTimerRef.current = null;
+    }
+
+    if (incomingPromptCountdownRef.current) {
+      clearInterval(incomingPromptCountdownRef.current);
+      incomingPromptCountdownRef.current = null;
+    }
+  }, []);
+
+  const scheduleIncomingPrompt = useCallback(
+    (delayMs = 7000) => {
+      clearIncomingPromptTimers();
+      incomingPromptTimerRef.current = setTimeout(() => {
+        setIncomingPromptCountdown(20);
+        setShowIncomingPrompt(true);
+      }, delayMs);
+    },
+    [clearIncomingPromptTimers]
+  );
+
+  const acceptIncomingPrompt = useCallback(() => {
+    clearIncomingPromptTimers();
+    setShowIncomingPrompt(false);
+    navigation.replace('IncomingRequests');
+  }, [clearIncomingPromptTimers, navigation]);
+
+  const declineIncomingPrompt = useCallback(() => {
+    clearIncomingPromptTimers();
+    setShowIncomingPrompt(false);
+    setIncomingPromptCountdown(20);
+
+    if (isOnline && status === 'approved') {
+      scheduleIncomingPrompt(5000);
+    }
+  }, [clearIncomingPromptTimers, isOnline, scheduleIncomingPrompt, status]);
+
   const saveTripPreferences = useCallback(
     async (nextPreferences: DriverTripPreferences) => {
       if (!context.driverId) {
@@ -2000,6 +2061,56 @@ function PendingApprovalScreen({ navigation, context }: PendingApprovalProps) {
   }, [context.driverId, loadMultiStateRules, refreshAirportQueueStatusThrottled, refreshProStatus, refreshSurgeVisibilityThrottled]);
 
   useEffect(() => {
+    if (isOnline && status === 'approved') {
+      if (!showIncomingPrompt) {
+        scheduleIncomingPrompt();
+      }
+      return;
+    }
+
+    clearIncomingPromptTimers();
+    setShowIncomingPrompt(false);
+    setIncomingPromptCountdown(20);
+  }, [clearIncomingPromptTimers, isOnline, scheduleIncomingPrompt, showIncomingPrompt, status]);
+
+  useEffect(() => {
+    if (!showIncomingPrompt) {
+      if (incomingPromptCountdownRef.current) {
+        clearInterval(incomingPromptCountdownRef.current);
+        incomingPromptCountdownRef.current = null;
+      }
+      return;
+    }
+
+    incomingPromptCountdownRef.current = setInterval(() => {
+      setIncomingPromptCountdown(previous => {
+        if (previous <= 1) {
+          if (incomingPromptCountdownRef.current) {
+            clearInterval(incomingPromptCountdownRef.current);
+            incomingPromptCountdownRef.current = null;
+          }
+          return 0;
+        }
+
+        return previous - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (incomingPromptCountdownRef.current) {
+        clearInterval(incomingPromptCountdownRef.current);
+        incomingPromptCountdownRef.current = null;
+      }
+    };
+  }, [showIncomingPrompt]);
+
+  useEffect(() => {
+    if (showIncomingPrompt && incomingPromptCountdown <= 0) {
+      declineIncomingPrompt();
+    }
+  }, [declineIncomingPrompt, incomingPromptCountdown, showIncomingPrompt]);
+
+  useEffect(() => {
     const intervalId = setInterval(() => {
       setShiftTicker(Date.now());
     }, 15000);
@@ -2049,8 +2160,9 @@ function PendingApprovalScreen({ navigation, context }: PendingApprovalProps) {
   useEffect(
     () => () => {
       stopTracking();
+      clearIncomingPromptTimers();
     },
-    [stopTracking]
+    [clearIncomingPromptTimers, stopTracking]
   );
 
   return (
@@ -2058,7 +2170,7 @@ function PendingApprovalScreen({ navigation, context }: PendingApprovalProps) {
       <Text style={styles.statusTitle}>Current Status: {status.toUpperCase()}</Text>
       <Text style={styles.statusMessage}>{message}</Text>
       {loading ? <ActivityIndicator /> : <Button title="Refresh Status" onPress={refreshStatus} />}
-      {status === 'approved' ? <Button title="Open Incoming Requests" onPress={() => navigation.navigate('IncomingRequests')} /> : null}
+      {status === 'approved' ? <Button title="Open Incoming Requests" onPress={() => navigation.replace('IncomingRequests')} /> : null}
 
       <View style={styles.trackingCard}>
         <View style={styles.trackingHeaderRow}>
@@ -2068,6 +2180,34 @@ function PendingApprovalScreen({ navigation, context }: PendingApprovalProps) {
             <Switch value={isOnline} onValueChange={toggleOnlineStatus} disabled={status !== 'approved'} />
           </View>
         </View>
+
+        {isOnline && status === 'approved' ? (
+          <View style={styles.findingTripsCard}>
+            <View style={styles.incomingPromptHeaderRow}>
+              <Text style={styles.findingTripsTitle}>Finding Trips</Text>
+              <ActivityIndicator size="small" color={DRIVER_COLORS.accent} />
+            </View>
+            <Text style={styles.findingTripsSubtle}>Searching nearby requests and keeping live queue priority active.</Text>
+
+            {showIncomingPrompt ? (
+              <View style={styles.incomingPromptCard}>
+                <View style={styles.incomingPromptHeaderRow}>
+                  <Text style={styles.incomingPromptTitle}>Incoming Ride Request</Text>
+                  <Text style={styles.incomingPromptCountdown}>00:{String(Math.max(incomingPromptCountdown, 0)).padStart(2, '0')}</Text>
+                </View>
+                <Text style={styles.findingTripsSubtle}>Elite Ride - Downtown | ETA 4 min | Est. $18.50</Text>
+                <View style={styles.queueActionsRow}>
+                  <View style={styles.tripActionButton}>
+                    <Button title="Accept" onPress={acceptIncomingPrompt} />
+                  </View>
+                  <View style={styles.tripActionButton}>
+                    <Button title="Decline" onPress={declineIncomingPrompt} color="#dc2626" />
+                  </View>
+                </View>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
 
         <Text style={styles.trackingText}>Socket: {socketConnected ? 'Connected' : 'Disconnected'}</Text>
         <Text style={styles.trackingText}>Heartbeat interval: every 4 seconds</Text>
@@ -2466,7 +2606,7 @@ type IncomingRequestsProps = NativeStackScreenProps<RootStackParamList, 'Incomin
   context: OnboardingContext;
 };
 
-function IncomingRequestsScreen({ context }: IncomingRequestsProps) {
+function IncomingRequestsScreen({ navigation, context }: IncomingRequestsProps) {
   const [incomingTrips, setIncomingTrips] = useState<DriverTrip[]>([]);
   const [currentTrip, setCurrentTrip] = useState<DriverTrip | null>(null);
   const [loading, setLoading] = useState(false);
@@ -2492,6 +2632,19 @@ function IncomingRequestsScreen({ context }: IncomingRequestsProps) {
   const loadTripRequestsRef = useRef<(() => Promise<void>) | null>(null);
   const tripFeedSocketRef = useRef<Socket | null>(null);
   const lastSyncedRoutePointRef = useRef<DriverCoordinates | null>(null);
+
+  useEffect(() => {
+    if (!context.driverId) {
+      navigation.replace('Registration');
+    }
+  }, [context.driverId, navigation]);
+
+  const normalizeTripStatus = useCallback((value: string | null | undefined) => {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, '_');
+  }, []);
 
   const formatMoney = useCallback((value: number | null | undefined) => {
     return formatMaskedCurrency(value, isEarningsVisible);
@@ -2840,6 +2993,17 @@ function IncomingRequestsScreen({ context }: IncomingRequestsProps) {
           throw new Error(payload.message || `Failed to ${action} trip request.`);
         }
 
+        if (action === 'accept') {
+          const acceptedTrip = incomingTrips.find(trip => trip._id === tripId);
+          if (acceptedTrip) {
+            setCurrentTrip({
+              ...acceptedTrip,
+              status: 'driver_accepted',
+            });
+            setIncomingTrips(previous => previous.filter(trip => trip._id !== tripId));
+          }
+        }
+
         await loadTripRequests();
       } catch (responseError: unknown) {
         const message = responseError instanceof Error ? responseError.message : 'Unable to process response.';
@@ -2848,8 +3012,34 @@ function IncomingRequestsScreen({ context }: IncomingRequestsProps) {
         setProcessingTripId('');
       }
     },
-    [context.driverId, loadTripRequests]
+    [context.driverId, incomingTrips, loadTripRequests]
   );
+
+  const markArrivedAtPickup = useCallback(() => {
+    setCurrentTrip(previous => {
+      if (!previous) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        status: 'driver_arrived_pickup',
+      };
+    });
+  }, []);
+
+  const markDestinationReached = useCallback(() => {
+    setCurrentTrip(previous => {
+      if (!previous) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        status: 'destination_reached',
+      };
+    });
+  }, []);
 
   const navigateToTripDestination = useCallback(async () => {
     if (!currentTrip) {
@@ -2947,7 +3137,8 @@ function IncomingRequestsScreen({ context }: IncomingRequestsProps) {
       return;
     }
 
-    if (!['driver_accepted', 'driver_arrived_pickup', 'in_progress'].includes(currentTrip.status)) {
+    const normalizedStatus = normalizeTripStatus(currentTrip.status);
+    if (!['driver_accepted', 'driver_arrived_pickup', 'in_progress', 'destination_reached'].includes(normalizedStatus)) {
       return;
     }
 
@@ -2959,11 +3150,20 @@ function IncomingRequestsScreen({ context }: IncomingRequestsProps) {
     return () => {
       clearInterval(trackingIntervalId);
     };
-  }, [context.driverId, currentTrip, syncRoutePoint]);
+  }, [context.driverId, currentTrip, normalizeTripStatus, syncRoutePoint]);
 
   const airportWindows = AIRPORT_OPPORTUNITY_WINDOWS.slice(0, 3);
   const payoutHeadline = weeklyPayouts?.totals?.driverEarnings;
-  const currentTripStatusLabel = currentTrip ? currentTrip.status.replace(/_/g, ' ') : 'No active trip';
+  const currentTripStatus = normalizeTripStatus(currentTrip?.status);
+  const currentTripStatusLabel = currentTrip
+    ? currentTrip.status
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, character => character.toUpperCase())
+    : 'No active trip';
+  const canMarkArrivedPickup = currentTripStatus === 'driver_accepted';
+  const canStartTrip = ['driver_arrived_pickup', 'driver_accepted', 'accepted', 'assigned', 'assigned_to_driver'].includes(currentTripStatus);
+  const canMarkDestinationReached = currentTripStatus === 'in_progress';
+  const canCompleteTrip = ['destination_reached', 'in_progress', 'trip_completed_pending_closeout'].includes(currentTripStatus);
 
   return (
     <ScrollView contentContainerStyle={styles.screenContainer}>
@@ -3105,7 +3305,7 @@ function IncomingRequestsScreen({ context }: IncomingRequestsProps) {
             <Text style={styles.tripText}>Rider: {currentTrip.rider?.name || 'Unknown rider'}</Text>
             <Text style={styles.tripText}>Pickup: {currentTrip.pickup.address || `${currentTrip.pickup.latitude}, ${currentTrip.pickup.longitude}`}</Text>
             <Text style={styles.tripText}>Dropoff: {currentTrip.dropoff.address || `${currentTrip.dropoff.latitude}, ${currentTrip.dropoff.longitude}`}</Text>
-            <Text style={styles.tripText}>Status: {currentTrip.status}</Text>
+            <Text style={styles.tripText}>Status: {currentTripStatusLabel}</Text>
             <Text style={styles.tripText}>Upfront fare: {formatMoney(currentTrip.upfrontFare ?? currentTrip.fareEstimate)}</Text>
             <Text style={styles.tripText}>Service dog: {currentTrip.serviceDogRequested ? 'Yes' : 'No'}</Text>
             <Text style={styles.tripText}>Service dog fee: {formatMoney(currentTrip.serviceDogFee || 0)}</Text>
@@ -3119,18 +3319,30 @@ function IncomingRequestsScreen({ context }: IncomingRequestsProps) {
 
             <View style={styles.surfaceActionRow}>
               <Pressable style={({ pressed }) => [styles.primarySurfaceButton, pressed ? styles.surfaceButtonPressed : null]} onPress={navigateToTripDestination}>
-                <Text style={styles.primarySurfaceButtonText}>{currentTrip.status === 'in_progress' ? 'Navigate to Dropoff' : 'Navigate to Pickup'}</Text>
+                <Text style={styles.primarySurfaceButtonText}>{['in_progress', 'destination_reached'].includes(currentTripStatus) ? 'Navigate to Dropoff' : 'Navigate to Pickup'}</Text>
               </Pressable>
 
-              {['driver_accepted', 'driver_arrived_pickup'].includes(currentTrip.status) ? (
+              {canMarkArrivedPickup ? (
+                <Pressable style={({ pressed }) => [styles.secondarySurfaceButton, pressed ? styles.surfaceButtonPressed : null]} onPress={markArrivedAtPickup}>
+                  <Text style={styles.secondarySurfaceButtonText}>Mark Arrived Pickup</Text>
+                </Pressable>
+              ) : null}
+
+              {canStartTrip ? (
                 <Pressable style={({ pressed }) => [styles.secondarySurfaceButton, pressed ? styles.surfaceButtonPressed : null, processingTripId === currentTrip._id ? styles.disabledSurfaceButton : null]} onPress={processingTripId === currentTrip._id ? undefined : startCurrentTrip}>
                   <Text style={styles.secondarySurfaceButtonText}>{processingTripId === currentTrip._id ? 'Starting...' : 'Start Trip'}</Text>
                 </Pressable>
               ) : null}
 
-              {currentTrip.status === 'in_progress' ? (
+              {canMarkDestinationReached ? (
+                <Pressable style={({ pressed }) => [styles.secondarySurfaceButton, pressed ? styles.surfaceButtonPressed : null]} onPress={markDestinationReached}>
+                  <Text style={styles.secondarySurfaceButtonText}>Mark Destination Reached</Text>
+                </Pressable>
+              ) : null}
+
+              {canCompleteTrip ? (
                 <Pressable style={({ pressed }) => [styles.dangerSurfaceButton, pressed ? styles.surfaceButtonPressed : null, processingTripId === currentTrip._id ? styles.disabledSurfaceButton : null]} onPress={processingTripId === currentTrip._id ? undefined : endCurrentTrip}>
-                  <Text style={styles.primarySurfaceButtonText}>{processingTripId === currentTrip._id ? 'Ending...' : 'End Trip'}</Text>
+                  <Text style={styles.primarySurfaceButtonText}>{processingTripId === currentTrip._id ? 'Completing...' : 'Complete Trip'}</Text>
                 </Pressable>
               ) : null}
             </View>
@@ -3335,6 +3547,45 @@ const styles = StyleSheet.create({
   trackingText: {
     fontSize: 14,
     color: DRIVER_COLORS.textSecondary,
+  },
+  findingTripsCard: {
+    marginTop: 8,
+    borderRadius: 14,
+    backgroundColor: DRIVER_COLORS.surfaceHigh,
+    padding: 10,
+    gap: 6,
+  },
+  findingTripsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: DRIVER_COLORS.textPrimary,
+  },
+  findingTripsSubtle: {
+    fontSize: 13,
+    color: DRIVER_COLORS.textSecondary,
+  },
+  incomingPromptCard: {
+    marginTop: 6,
+    borderRadius: 12,
+    backgroundColor: DRIVER_COLORS.surfaceHighest,
+    padding: 10,
+    gap: 6,
+  },
+  incomingPromptHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  incomingPromptTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: DRIVER_COLORS.textPrimary,
+  },
+  incomingPromptCountdown: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#ffb694',
   },
   gpsQualityGood: {
     color: DRIVER_COLORS.successText,
