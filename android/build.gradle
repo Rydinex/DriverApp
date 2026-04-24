@@ -4,7 +4,7 @@ buildscript {
         minSdkVersion = 24
         compileSdkVersion = 36
         targetSdkVersion = 36
-        ndkVersion = "23.1.7779620"
+        ndkVersion = "27.1.12297006"
         kotlinVersion = "2.1.20"
     }
     repositories {
@@ -25,6 +25,19 @@ allprojects {
         resolutionStrategy {
             force "com.facebook.react:react-android:0.84.1"
             force "com.facebook.react:hermes-android:0.84.1"
+        }
+    }
+}
+
+// NDK 27 no longer auto-links libc++_shared. Inject the flag into every
+// Android library subproject that has a CMake native build.
+subprojects { project ->
+    project.pluginManager.withPlugin("com.android.library") {
+        try {
+            project.android.defaultConfig.externalNativeBuild.cmake
+                .arguments("-DCMAKE_SHARED_LINKER_FLAGS=-lc++_shared")
+        } catch (Exception ignored) {
+            // Library does not use CMake – skip silently.
         }
     }
 }
