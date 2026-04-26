@@ -27,11 +27,11 @@ android {
     namespace "com.rydinex.driver"
 
     defaultConfig {
-        applicationId "com.rydinex.driver"
+        applicationId "com.rydinex.driverapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 14
-        versionName "1.1.12"
+        versionCode 1
+        versionName "1.0"
         externalNativeBuild {
             cmake {
                 arguments "-DANDROID_STL=c++_shared",
