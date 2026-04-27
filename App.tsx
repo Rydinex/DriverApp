@@ -24,6 +24,7 @@ import { errorCodes, isErrorWithCode, pick, types } from '@react-native-document
 import Geolocation from '@react-native-community/geolocation';
 import { io, Socket } from 'socket.io-client';
 import { API_BASE_URL, SOCKET_URL } from './src/config/network';
+import { MainTabNavigator } from './src/navigation/MainTabNavigator';
 
 type RootStackParamList = {
   Registration: undefined;
@@ -31,6 +32,7 @@ type RootStackParamList = {
   VehicleInfo: undefined;
   PendingApproval: undefined;
   IncomingRequests: undefined;
+  MainTabs: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -574,6 +576,9 @@ function App() {
           <Stack.Screen name="IncomingRequests" options={{ title: 'Incoming Requests' }}>
             {props => <IncomingRequestsScreen {...props} context={contextValue} />}
           </Stack.Screen>
+          <Stack.Screen name="MainTabs" options={{ headerShown: false }}>
+            {props => <MainTabNavigator />}
+          </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaView>
@@ -631,7 +636,7 @@ function RegistrationScreen({ navigation, context }: RegistrationProps) {
       context.setDriverId(resolvedDriverId);
       if (isLoginMode) {
         // Always land on the operational dashboard first (online toggle, map shortcuts, airport queue).
-        navigation.replace('PendingApproval');
+        navigation.replace('MainTabs');
         return;
       }
 
