@@ -3,9 +3,10 @@
   "version": "0.0.3",
   "private": true,
   "scripts": {
-    "android": "react-native run-android",
-    "ios": "react-native run-ios",
-    "start": "react-native start --reset-cache",
+    "android": "react-native run-android --port 8082",
+    "android:usb": "set \"PATH=%LOCALAPPDATA%\\Android\\Sdk\\platform-tools;%PATH%\" && adb reverse tcp:8082 tcp:8082 && adb reverse tcp:8080 tcp:8080 && react-native run-android --port 8082",
+    "ios": "react-native run-ios --port 8082",
+    "start": "react-native start --reset-cache --port 8082",
     "lint": "eslint .",
     "test": "jest"
   },
@@ -19,6 +20,7 @@
     "react": "19.2.3",
     "react-native": "0.84.1",
     "react-native-gesture-handler": "^2.30.0",
+    "react-native-maps": "^1.27.2",
     "react-native-safe-area-context": "^5.7.0",
     "react-native-screens": "^4.24.0",
     "serve": "^14.2.4",

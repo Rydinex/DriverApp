@@ -25,6 +25,14 @@ import Geolocation from '@react-native-community/geolocation';
 import { io, Socket } from 'socket.io-client';
 import { API_BASE_URL, SOCKET_URL } from './src/config/network';
 import { MainTabNavigator } from './src/navigation/MainTabNavigator';
+import { IncomingRequestScreen } from './src/screens/IncomingRequestScreen';
+import { NavigationScreen } from './src/screens/NavigationScreen';
+import { MovingRiderScreen } from './src/screens/MovingRiderScreen';
+import { ProfessionalDriversHubScreen } from './src/screens/ProfessionalDriversHubScreen';
+import { ProfessionalDriverPrdScreen } from './src/screens/ProfessionalDriverPrdScreen';
+import { WaitForRiderScreen } from './src/screens/WaitForRiderScreen';
+import { TripInProgressScreen } from './src/screens/TripInProgressScreen';
+import { DestinationReachedScreen } from './src/screens/DestinationReachedScreen';
 
 type RootStackParamList = {
   Registration: undefined;
@@ -33,6 +41,14 @@ type RootStackParamList = {
   PendingApproval: undefined;
   IncomingRequests: undefined;
   MainTabs: undefined;
+  IncomingRequest: undefined;
+  NavigationScreen: undefined;
+  MovingRider: undefined;
+  WaitForRider: undefined;
+  TripInProgress: undefined;
+  DestinationReached: undefined;
+  ProfessionalDriversHub: undefined;
+  ProfessionalDriverPrd: { slug: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -579,6 +595,14 @@ function App() {
           <Stack.Screen name="MainTabs" options={{ headerShown: false }}>
             {props => <MainTabNavigator />}
           </Stack.Screen>
+          <Stack.Screen name="IncomingRequest" component={IncomingRequestScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="NavigationScreen" component={NavigationScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="MovingRider" component={MovingRiderScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="WaitForRider" component={WaitForRiderScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="TripInProgress" component={TripInProgressScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="DestinationReached" component={DestinationReachedScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ProfessionalDriversHub" component={ProfessionalDriversHubScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ProfessionalDriverPrd" component={ProfessionalDriverPrdScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaView>
@@ -2180,10 +2204,16 @@ function PendingApprovalScreen({ navigation, context }: PendingApprovalProps) {
       <View style={styles.trackingCard}>
         <View style={styles.trackingHeaderRow}>
           <Text style={styles.trackingTitle}>Realtime Driver Tracking</Text>
-          <View style={styles.toggleContainer}>
-            <Text style={styles.toggleLabel}>{isOnline ? 'Online' : 'Offline'}</Text>
-            <Switch value={isOnline} onValueChange={toggleOnlineStatus} disabled={status !== 'approved'} />
-          </View>
+          {!isOnline ? (
+            <View style={styles.toggleContainer}>
+              <Text style={styles.toggleLabel}>Offline</Text>
+              <Switch value={isOnline} onValueChange={toggleOnlineStatus} disabled={status !== 'approved'} />
+            </View>
+          ) : (
+            <View style={styles.toggleContainer}>
+              <Text style={styles.toggleLabel}>Online</Text>
+            </View>
+          )}
         </View>
 
         {isOnline && status === 'approved' ? (
@@ -2544,6 +2574,18 @@ function PendingApprovalScreen({ navigation, context }: PendingApprovalProps) {
             disabled={roadClosureLoading}
           />
         </View>
+
+        {isOnline && status === 'approved' ? (
+          <View style={styles.queueCard}>
+            <Text style={styles.queueTitle}>Driver Availability</Text>
+            <Text style={styles.queueText}>Swipe up to this section when you want to end your shift.</Text>
+            <View style={styles.queueActionsRow}>
+              <View style={styles.tripActionButton}>
+                <Button title="Go Offline" onPress={toggleOnlineStatus} color="#dc2626" />
+              </View>
+            </View>
+          </View>
+        ) : null}
 
         {status !== 'approved' ? <Text style={styles.helperNote}>Go online becomes available after approval.</Text> : null}
         {trackingError ? <Text style={styles.errorText}>{trackingError}</Text> : null}

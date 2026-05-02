@@ -1,7 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Pressable, Image } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 export function AccountScreen() {
+  const navigation = useNavigation<any>();
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -24,7 +27,7 @@ export function AccountScreen() {
 
         {/* Action Menu */}
         <View style={styles.menuGroup}>
-          <Pressable style={styles.menuItem}>
+          <Pressable style={styles.menuItem} onPress={() => navigation.navigate('ProfessionalDriversHub')}>
             <Text style={styles.menuIcon}>workspace_premium</Text>
             <View style={styles.menuTextContainer}>
               <Text style={styles.menuTitle}>Pro Dashboard</Text>
@@ -33,7 +36,7 @@ export function AccountScreen() {
             <Text style={styles.menuChevron}>chevron_right</Text>
           </Pressable>
           
-          <Pressable style={styles.menuItem}>
+          <Pressable style={styles.menuItem} onPress={() => navigation.navigate('ProfessionalDriverPrd', { slug: 'rydinex_driver_pro_fleet_preferences' })}>
             <Text style={styles.menuIcon}>local_shipping</Text>
             <View style={styles.menuTextContainer}>
               <Text style={styles.menuTitle}>Vehicle & Fleet</Text>
@@ -42,7 +45,7 @@ export function AccountScreen() {
             <Text style={styles.menuChevron}>chevron_right</Text>
           </Pressable>
 
-          <Pressable style={styles.menuItem}>
+          <Pressable style={styles.menuItem} onPress={() => navigation.navigate('ProfessionalDriverPrd', { slug: 'rydinex_driver_payout_history' })}>
             <Text style={styles.menuIcon}>receipt_long</Text>
             <View style={styles.menuTextContainer}>
               <Text style={styles.menuTitle}>Tax Center</Text>
@@ -51,7 +54,7 @@ export function AccountScreen() {
             <Text style={styles.menuChevron}>chevron_right</Text>
           </Pressable>
           
-          <Pressable style={styles.menuItem}>
+          <Pressable style={styles.menuItem} onPress={() => navigation.navigate('ProfessionalDriverPrd', { slug: 'rydinex_driver_sound_settings' })}>
             <Text style={styles.menuIcon}>settings</Text>
             <View style={styles.menuTextContainer}>
               <Text style={styles.menuTitle}>App Settings</Text>
