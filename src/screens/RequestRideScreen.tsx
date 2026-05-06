@@ -1,10 +1,16 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import FeatureReadyScreen from '../components/FeatureReadyScreen';
 
-export default function ScreenName() {
+export default function RequestRideScreen({ navigation }: any) {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>ScreenName Placeholder</Text>
-    </View>
+    <FeatureReadyScreen
+      title="Incoming Ride Request"
+      description="Review rider pickup details, payout estimate, and accept or decline quickly."
+      navigation={navigation}
+      actions={[
+        { label: 'Open Incoming Requests', route: 'IncomingRequests' },
+        { label: 'Go To Main Tabs', route: 'MainTabs' },
+      ]}
+    />
   );
 }

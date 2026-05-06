@@ -1,10 +1,16 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import FeatureReadyScreen from '../components/FeatureReadyScreen';
 
-export default function ScreenName() {
+export default function TripTrackingScreen({ navigation }: any) {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>ScreenName Placeholder</Text>
-    </View>
+    <FeatureReadyScreen
+      title="Trip Tracking"
+      description="Track route progress, rider ETA milestones, and status transitions in one place."
+      navigation={navigation}
+      actions={[
+        { label: 'Open Navigation', route: 'NavigationScreen' },
+        { label: 'Open Trip In Progress', route: 'TripInProgress' },
+      ]}
+    />
   );
 }

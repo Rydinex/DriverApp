@@ -1,10 +1,16 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import FeatureReadyScreen from '../components/FeatureReadyScreen';
 
-export default function ScreenName() {
+export default function DriverProfileScreen({ navigation }: any) {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>ScreenName Placeholder</Text>
-    </View>
+    <FeatureReadyScreen
+      title="Driver Profile"
+      description="Manage your driver profile, verification status, and professional settings."
+      navigation={navigation}
+      actions={[
+        { label: 'Open Pro Hub', route: 'ProfessionalDriversHub' },
+        { label: 'Go To Main Tabs', route: 'MainTabs' },
+      ]}
+    />
   );
 }

@@ -1,10 +1,16 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import FeatureReadyScreen from '../components/FeatureReadyScreen';
 
-export default function ScreenName() {
+export default function SafetyHubScreen({ navigation }: any) {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>ScreenName Placeholder</Text>
-    </View>
+    <FeatureReadyScreen
+      title="Safety Hub"
+      description="Access emergency tools, safety workflows, and incident reporting while driving."
+      navigation={navigation}
+      actions={[
+        { label: 'Open Trip In Progress', route: 'TripInProgress' },
+        { label: 'Return To Main Tabs', route: 'MainTabs' },
+      ]}
+    />
   );
 }
