@@ -3,11 +3,19 @@
 const LOCAL_BACKEND_HOST = '10.0.0.206';
 const LOCAL_BACKEND_PORT = 8080;
 
-// Backend API domain
-const BACKEND_URL =
+const configuredBackendUrl =
 	process.env.EXPO_PUBLIC_BACKEND_URL ||
 	process.env.EXPO_PUBLIC_API_URL ||
-	(__DEV__
+	process.env.API_URL;
+
+const useLocalBackend =
+	process.env.EXPO_PUBLIC_USE_LOCAL_BACKEND === 'true' ||
+	process.env.USE_LOCAL_BACKEND === 'true';
+
+// Default to production API unless local mode is explicitly enabled.
+const BACKEND_URL =
+	configuredBackendUrl ||
+	(useLocalBackend
 		? `http://${LOCAL_BACKEND_HOST}:${LOCAL_BACKEND_PORT}`
 		: 'https://api.rydinex.com');
 
