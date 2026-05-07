@@ -666,7 +666,13 @@ function RegistrationScreen({ navigation, context }: RegistrationProps) {
 
       navigation.replace('DocumentUpload');
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : `Unable to ${isLoginMode ? 'sign in' : 'register driver'}.`;
+      const fallbackMessage = `Unable to ${isLoginMode ? 'sign in' : 'register driver'}.`;
+      const originalMessage = error instanceof Error ? error.message : fallbackMessage;
+      const endpoint = isLoginMode ? '/drivers/login' : '/drivers/register';
+      const message =
+        originalMessage === 'Network request failed'
+          ? `${originalMessage}\nEndpoint: ${API_BASE_URL}${endpoint}`
+          : originalMessage;
       Alert.alert('Error', message);
     } finally {
       setLoading(false);
